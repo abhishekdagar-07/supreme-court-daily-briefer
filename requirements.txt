@@ -1,0 +1,6 @@
+requests
+beautifulsoup4
+PyMuPDF
+python-docx
+python-dotenv
+anthropic

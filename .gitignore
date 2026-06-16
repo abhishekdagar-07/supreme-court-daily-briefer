@@ -1,0 +1,14 @@
+UP_Judgements/
+UP_Judgements_Index.xlsx
+progress.json
+test_*.pdf
+__pycache__/
+*.pyc
+.env
+logs/
+state.json
+sample.pdf
+
+# Unrelated UP-tool files (they live in their own repo: up-judgements-scraper)
+up_judgements_scraper.py
+test_download.py
