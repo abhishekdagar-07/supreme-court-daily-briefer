@@ -46,26 +46,26 @@ Briefs are emailed (via Gmail) to **adv.abhishekdagar@gmail.com**.
    ```
 4. Test it: `py email_setup.py` (sends a test email to `EMAIL_TO`).
 
-### 4. Schedule it (runs automatically)
+### 4. Google Drive archive (optional)
+Archive each day's PDFs + Word brief to Drive (also syncs to your Desktop if you run Google Drive for Desktop). Files land in `My Drive/Supreme Court Judgments/<month>/<date>/`. Follow the steps in `gdrive_setup.py` to create a Google Cloud OAuth client, then:
+```
+GOOGLE_CLIENT_ID=...apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=...
+GOOGLE_REFRESH_TOKEN=...        # printed by: py gdrive_setup.py
+```
+Uses the least-privilege `drive.file` scope (only sees files it creates). Skipped automatically if these are blank.
+
+### 5. Run automatically in the cloud (recommended) — GitHub Actions
+The scheduled run lives in `.github/workflows/daily-brief.yml`. It runs **daily at 17:05 UTC (10:35 PM IST)** via `python main.py --yesterday`, independent of your PC.
+- Add your secrets in the repo: **Settings → Secrets and variables → Actions** — `ANTHROPIC_API_KEY`, `EMAIL_ADDRESS`, `EMAIL_APP_PASSWORD`, `EMAIL_TO`, and (optional) the three `GOOGLE_*` values. (Can be set with `gh secret set`.)
+- GitHub cron is best-effort (may run a few minutes late).
+- Note: GitHub auto-pauses scheduled workflows after **60 days of no repo activity** — push any commit to resume.
+
+### 6. (Alternative) Run on this PC instead — Windows Task Scheduler
 ```powershell
 .\register_task.ps1
 ```
-This registers **three** Windows tasks so the brief reaches your phone at **10:35 PM** every day:
-
-| Task | Time | Wakes PC? | What it does |
-|---|---|---|---|
-| `SupremeCourtBrief-Prepare-2PM` | 2:00 PM | No (only if PC already on) | Gather + build the brief (no send) |
-| `SupremeCourtBrief-Prepare-Late` | 10:30 PM | Yes | Build the brief if 2 PM was missed (no send) |
-| `SupremeCourtBrief-Send` | 10:35 PM | Yes | Email the brief (the only send) |
-
-Behaviour:
-- **PC on at 2 PM** → brief is built then; at 10:35 PM it's sent.
-- **PC off/asleep at 2 PM** → the PC wakes at 10:30 PM, builds the brief, and sends at 10:35 PM.
-- **PC fully shut down** → Windows runs the missed tasks as soon as you turn it on; Send prepares first if needed, then sends.
-
-> Waking from sleep needs the PC asleep, not fully shut down. The tool is cloud-portable if you later move it to an always-on server.
-
-**After sending (power management):** the 10:35 PM Send step retries the email send up to **3 times** (`SEND_MAX_ATTEMPTS`), then — if the tool had to wake the PC — **puts the PC back to sleep**. It only sleeps when you've been idle for at least `SLEEP_MIN_IDLE_SECONDS` (default 5 min), so it will never sleep the machine while you're actively using it (e.g. if you powered it on yourself late at night). Set `SLEEP_AFTER_SEND = False` in `config.py` to disable auto-sleep. (Depending on your Windows power settings the machine may hibernate rather than sleep; daily wake-to-run still works from either.)
+Registers three tasks: build at 2 PM, fallback build at 10:30 PM (wakes PC), email at 10:35 PM (wakes PC, retries 3×, then sleeps the PC if you've been idle ≥ `SLEEP_MIN_IDLE_SECONDS`). Only works while the PC is on or asleep (not shut down), and wake-from-sleep depends on your power settings — which is why the cloud option above is more reliable. Disable with `Disable-ScheduledTask`.
 
 ## Run it on demand (any time)
 
@@ -88,9 +88,11 @@ py main.py --force             # ignore the "already ran today" guard
 | `brief.py` | PDF text extraction (+ Vision OCR fallback) and Haiku headnotes |
 | `worddoc.py` | Combined Word document builder |
 | `email_notify.py` | Email preview + Word attachment delivery |
-| `main.py` | Orchestration, once-per-day guard, catch-up, logging |
-| `register_task.ps1` | Windows Task Scheduler registration |
-| `email_setup.py` | One-time helper to test email delivery |
+| `gdrive.py` | Google Drive archive uploader (OAuth, `drive.file`) |
+| `main.py` | Orchestration, run modes, logging |
+| `.github/workflows/daily-brief.yml` | Cloud daily schedule (GitHub Actions) |
+| `register_task.ps1` | Windows Task Scheduler registration (PC alternative) |
+| `email_setup.py` / `gdrive_setup.py` | One-time helpers (test email / get Drive token) |
 
 ## Cost
 SCI judgments are text PDFs, so no expensive OCR. Each run uses Claude Haiku for one CAPTCHA read + one headnote per judgment — typically a few rupees to ~₹60 on a heavy day.

@@ -22,6 +22,11 @@ EMAIL_TO = os.environ.get("EMAIL_TO", "").strip() or EMAIL_ADDRESS    # recipien
 SMTP_HOST = os.environ.get("SMTP_HOST", "smtp.gmail.com").strip()
 SMTP_PORT = int(os.environ.get("SMTP_PORT", "465"))
 
+# Google Drive archiving (OAuth — see gdrive_setup.py). Optional; skipped if blank.
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "").strip()
+GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "").strip()
+GOOGLE_REFRESH_TOKEN = os.environ.get("GOOGLE_REFRESH_TOKEN", "").strip()
+
 # ── Models ─────────────────────────────────────────────────────────────────────
 # Haiku for both captcha-reading and headnote generation (cheap, fast).
 CAPTCHA_MODEL = "claude-haiku-4-5-20251001"

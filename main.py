@@ -25,6 +25,7 @@ import sci_client
 import brief
 import worddoc
 import email_notify as notify
+import gdrive
 import power
 
 
@@ -213,6 +214,7 @@ def run_immediate(date: datetime.date, log, send: bool):
     """Gather + brief + (optionally) send right now — used by --date / --latest."""
     res = process_date(date, log)
     if res["count"] > 0:
+        _archive_to_drive(date, res["doc_path"], log)
         if send and notify.deliver_brief(date, res["items"], res["doc_path"]):
             log.info("emailed brief")
         elif send:
@@ -222,10 +224,24 @@ def run_immediate(date: datetime.date, log, send: bool):
     return res["count"]
 
 
+def _archive_to_drive(date, doc_path, log):
+    """Upload the day's PDFs + Word brief to Google Drive, if configured."""
+    if not gdrive.is_configured():
+        return
+    try:
+        day_dir = config.date_folder(date)
+        files = sorted(day_dir.glob("*.pdf")) + [doc_path]
+        gdrive.upload_day(date, files, log)
+    except Exception as e:
+        log.warning("Google Drive upload failed: %s", e)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--prepare", action="store_true")
     ap.add_argument("--send", action="store_true")
+    ap.add_argument("--yesterday", action="store_true",
+                    help="cloud mode: process the previous calendar day and email it (stateless)")
     ap.add_argument("--latest", action="store_true")
     ap.add_argument("--date")
     ap.add_argument("--force", action="store_true")
@@ -250,6 +266,13 @@ def main():
             return
 
         send = not args.no_send
+        if args.yesterday:
+            # Cloud/scheduled mode: one run per day, targets the previous calendar
+            # day. Stateless (no dedup needed — each day covers a distinct date).
+            d = datetime.date.today() - datetime.timedelta(days=1)
+            log.info("=== yesterday run for %s ===", d)
+            run_immediate(d, log, send)
+            return
         if args.latest:
             log.info("=== on-demand latest run ===")
             today = datetime.date.today()
