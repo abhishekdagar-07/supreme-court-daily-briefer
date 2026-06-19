@@ -201,6 +201,13 @@ def _send_with_retries(subject: str, body: str, doc, log) -> bool:
 
 # ── on-demand modes ─────────────────────────────────────────────────────────────
 
+def _is_billing_error(e: Exception) -> bool:
+    """True if the failure is an out-of-credit / billing problem from the API."""
+    msg = str(e).lower()
+    return any(k in msg for k in (
+        "credit balance", "billing", "insufficient", "quota", "payment", "plans & billing"))
+
+
 def parse_date(s: str) -> datetime.date:
     for fmt in ("%d-%m-%Y", "%Y-%m-%d"):
         try:
@@ -298,7 +305,15 @@ def main():
     except Exception as e:
         log.exception("run failed")
         if not args.no_send:
-            notify.deliver_status(f"Supreme Court brief run failed: {e}")
+            if _is_billing_error(e):
+                notify.deliver_status(
+                    "ACTION NEEDED — top up your Anthropic API credits.\n\n"
+                    "Today's Supreme Court brief could not run because the API credit "
+                    "balance is too low. Add credits at https://console.anthropic.com "
+                    "(Billing), and the next run will resume automatically.\n\n"
+                    f"(Technical detail: {e})")
+            else:
+                notify.deliver_status(f"Supreme Court brief run failed: {e}")
         sys.exit(1)
 
 
