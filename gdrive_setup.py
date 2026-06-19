@@ -38,12 +38,16 @@ def main():
     flow = InstalledAppFlow.from_client_config(client_config, scopes=SCOPES)
     creds = flow.run_local_server(port=0, prompt="consent")
     if not creds.refresh_token:
-        print("No refresh token returned. Revoke prior access and retry with prompt=consent.")
+        print("No refresh token returned. Revoke prior access and retry.")
         return
-    print("\n" + "=" * 60)
-    print("SUCCESS — add this line to your .env:\n")
-    print("GOOGLE_REFRESH_TOKEN=" + creds.refresh_token)
-    print("=" * 60)
+    # Save it straight into .env (don't print the secret to the screen).
+    import pathlib
+    envp = pathlib.Path(__file__).resolve().parent / ".env"
+    lines = envp.read_text(encoding="utf-8").splitlines() if envp.exists() else []
+    lines = [l for l in lines if not l.startswith("GOOGLE_REFRESH_TOKEN=")]
+    lines.append("GOOGLE_REFRESH_TOKEN=" + creds.refresh_token)
+    envp.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    print("\nSUCCESS — refresh token saved to .env. You can close the browser tab.")
 
 
 if __name__ == "__main__":
