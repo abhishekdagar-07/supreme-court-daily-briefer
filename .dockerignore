@@ -1,0 +1,11 @@
+# Never bake secrets, local state, or Windows-only bits into the image.
+.env
+.git
+.github
+logs/
+state.json
+__pycache__/
+*.pyc
+sample.pdf
+register_task.ps1
+Run SC Briefer.bat
